@@ -21,10 +21,6 @@ async function showJobDetails(jobId) {
     }
 }
 
-
-
-
-
 function updateCoverLetter(coverLetter) {
     var coverLetterPane = document.getElementById('cover-letter-pane');
     // Check if the coverLetterPane exists
@@ -38,8 +34,6 @@ function updateCoverLetter(coverLetter) {
     }
 }
 
-
-
 function updateJobDetails(job) {
     var jobDetailsDiv = document.getElementById('job-details');
     var coverLetterDiv = document.getElementById('bottom-pane'); // Get the cover letter div
@@ -47,10 +41,10 @@ function updateJobDetails(job) {
     var html = '<h2 class="job-title">' + job.title + '</h2>';
     html += '<div class="button-container" style="text-align:center">';
     html += '<a href="' + job.job_url + '" class="job-button">Go to job</a>';
-    html += '<button class="job-button" onclick="markAsCoverLetter(' + job.id + ')">Cover Letter</button>';
     html += '<button class="job-button" onclick="markAsApplied(' + job.id + ')">Applied</button>';
     html += '<button class="job-button" onclick="markAsRejected(' + job.id + ')">Rejected</button>';
     html += '<button class="job-button" onclick="markAsInterview(' + job.id + ')">Interview</button>';
+    html += '<button class="job-button" onclick="applyLater(' + job.id + ')">Apply Later</button>';
     html += '<button class="job-button" onclick="hideJob(' + job.id + ')">Hide</button>';
     html += '</div>';
     html += '<p class="job-detail">' + job.company + ', ' + job.location + '</p>';
@@ -67,6 +61,17 @@ function updateJobDetails(job) {
     }
 }
 
+function updateCounters() {
+    fetch('/progress_statistics', { method: 'GET' })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('total-applications').textContent = 'Total Applications: ' + data.total_applications;
+            document.getElementById('total-interviews').textContent = 'Total Interviews: ' + data.total_interviews;
+            document.getElementById('total-rejections').textContent = 'Total Rejections: ' + data.total_rejections;
+            document.getElementById('total-hidden').textContent = 'Total Hidden: ' + data.total_hidden;
+            document.getElementById('total-apply-later').textContent = 'Total Apply Later: ' + data.total_apply_later;
+        });
+}
 
 function markAsApplied(jobId) {
     console.log('Marking job as applied: ' + jobId)
@@ -77,19 +82,22 @@ function markAsApplied(jobId) {
             if (data.success) {
                 var jobCard = document.querySelector(`.job-item[data-job-id="${jobId}"]`);
                 jobCard.classList.add('job-item-applied');
+                updateCounters();
             }
         });
 }
 
-function markAsCoverLetter(jobId) {
-    console.log('Marking job as cover letter: ' + jobId)
-    fetch('/get_CoverLetter/' + jobId, { method: 'POST' })
+function markAsInterview(jobId) {
+    console.log('Marking job as interview: ' + jobId)
+    fetch('/mark_interview/' + jobId, { method: 'POST' })
         .then(response => response.json())
         .then(data => {
             console.log(data);  // Log the response
-            if (data.cover_letter) {
-                // Show the job details again, this will also update the cover letter
-                showJobDetails(jobId);
+            if (data.success) {
+                var jobCard = document.querySelector(`.job-item[data-job-id="${jobId}"]`);
+                jobCard.classList.add('job-item-interview');
+                jobCard.classList.add('job-item-applied'); // Ensure applied class is added
+                updateCounters();
             }
         });
 }
@@ -103,6 +111,9 @@ function markAsRejected(jobId) {
             if (data.success) {
                 var jobCard = document.querySelector(`.job-item[data-job-id="${jobId}"]`);
                 jobCard.classList.add('job-item-rejected');
+                jobCard.classList.add('job-item-applied'); // Ensure applied class is added
+                jobCard.classList.remove('job-item-interview'); // Remove interview class
+                updateCounters();
             }
         });
 }
@@ -134,20 +145,25 @@ function hideJob(jobId) {
                     var jobDetailsDiv = document.getElementById('job-details');
                     jobDetailsDiv.innerHTML = '';
                 }
+                updateCounters();
             }
         });
 }
 
 
-function markAsInterview(jobId) {
-    console.log('Marking job as interview: ' + jobId)
-    fetch('/mark_interview/' + jobId, { method: 'POST' })
+function applyLater(jobId) {
+    console.log('Marking job as apply later: ' + jobId)
+    fetch('/apply_later/' + jobId, { method: 'POST' })
         .then(response => response.json())
         .then(data => {
             console.log(data);  // Log the response
             if (data.success) {
                 var jobCard = document.querySelector(`.job-item[data-job-id="${jobId}"]`);
-                jobCard.classList.add('job-item-interview');
+                jobCard.classList.add('job-item-apply-later');
+                alert('Job marked as Apply Later');
+                updateCounters();
+            } else {
+                alert('Failed to mark job as Apply Later');
             }
         });
 }

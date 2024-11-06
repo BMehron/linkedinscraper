@@ -75,6 +75,7 @@
                 display: flex;
                 justify-content: center;
                 gap: 10px;
+                margin-bottom: 20px; /* Add some space below the buttons */
             }
             .job-item-applied {
                 background-color: #c7f3ff;
@@ -84,6 +85,9 @@
             }
             .job-item-rejected {
                 background-color: #ffc7c7;
+            }
+            .job-item-apply-later {
+                background-color: #ffffc7; /* Light yellow */
             }
             .job-button {
                 background-color: #4CAF50; /* Green */
@@ -122,16 +126,39 @@
                 flex-grow: 1;
                 height: calc(30% - 5px); /* Height of the bottom pane */
             }
+            .top-left-button {
+                background-color: #4CAF50;
+                color: white;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+            .top-left-button.progress {
+                margin-left: 10px; /* Adjust the position to the left of the Jobs button */
+            }
+            #progress-section {
+                display: none;
+                padding: 20px;
+                background-color: #f8f8f8;
+                border-radius: 5px;
+                box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+                margin-top: 20px;
+            }
         </style>
     </head>
-    <body>
+    <body onload="showProgress()">
+        <div class="button-container">
+            <button class="top-left-button progress" onclick="showProgress()">Progress</button>
+            <button class="top-left-button" onclick="showJobsList()">Jobs</button>
+        </div>
         <div class="row">
-            <div class="column">
+            <div class="column" id="jobs-list" style="display: none;">
                 <!-- Display the list of jobs -->
                 <h2>Jobs List</h2>
                 
                 {% for job in jobs %}
-                <a class="{% if job.rejected == 1 %}job-item job-item-rejected{% elif job.interview == 1 %}job-item job-item-interview{% elif job.applied == 1 %}job-item job-item-applied{% else %}job-item{% endif %}"  href="#" onclick="event.preventDefault(); showJobDetails('{{ job.id }}')" data-job-id="{{ job.id }}">
+                <a class="{% if job.rejected == 1 %}job-item job-item-rejected{% elif job.interview == 1 %}job-item job-item-interview{% elif job.applied == 1 %}job-item job-item-applied{% elif job.apply_later == 1 %}job-item job-item-apply-later{% else %}job-item{% endif %}"  href="#" onclick="event.preventDefault(); showJobDetails('{{ job.id }}')" data-job-id="{{ job.id }}">
                     <div class="job-content">
                         <h3>{{ job.title }}</h3>
                         <p>{{ job.company }}, {{ job.location }}</p>
@@ -140,23 +167,73 @@
                 </a>
                 {% endfor %}
             </div>
-            <div class="column">
+            <div class="column" id="job-details-column" style="display: none;">
                 <!-- Placeholder for job details -->
                 <h2>Job Details</h2>
                 <div id="job-details">
                     <!-- Job details will be inserted here -->
                 </div>
                 <div id="resizer"></div>
-                <h2>Cover Letter</h2>
                 <div id="bottom-pane">
-                    <div id="cover-letter-pane">
-                        <!-- Cover letter will be inserted here -->
-                    </div>
-                    <!-- Bottom pane content goes here -->
+                    <button class="job-button" onclick="applyLater()">Apply Later</button>
                 </div>
             </div>
         </div>
+        <div id="progress-section">
+            <h2>Progress Statistics</h2>
+            <p id="total-applications">Total Applications: 0</p>
+            <p id="total-rejections">Total Rejections: 0</p>
+            <p id="total-interviews">Total Interviews: 0</p>
+            <p id="total-hidden">Total Hidden: 0</p>
+            <p id="total-apply-later">Total Apply Later: 0</p>
+        </div>
         <script src="/static/job_actions.js"></script>
+        <script>
+            function showJobsList() {
+                var jobsList = document.getElementById('jobs-list');
+                var progressSection = document.getElementById('progress-section');
+                var jobDetailsColumn = document.getElementById('job-details-column');
+                
+                jobsList.style.display = 'block';
+                progressSection.style.display = 'none';
+                jobDetailsColumn.style.display = 'block';
+            }
+        
+            function showProgress() {
+                var jobsList = document.getElementById('jobs-list');
+                var progressSection = document.getElementById('progress-section');
+                var jobDetailsColumn = document.getElementById('job-details-column');
+                
+                jobsList.style.display = 'none';
+                progressSection.style.display = 'block';
+                jobDetailsColumn.style.display = 'none';
+                
+                fetchProgressStatistics();
+            }
+        
+            async function fetchProgressStatistics() {
+                const response = await fetch('/progress_statistics');
+                const stats = await response.json();
+                document.getElementById('total-applications').innerText = 'Total Applications: ' + stats.total_applications;
+                document.getElementById('total-rejections').innerText = 'Total Rejections: ' + stats.total_rejections;
+                document.getElementById('total-interviews').innerText = 'Total Interviews: ' + stats.total_interviews;
+                document.getElementById('total-hidden').innerText = 'Total Hidden: ' + stats.total_hidden;
+                document.getElementById('total-apply-later').innerText = 'Total Apply Later: ' + stats.total_apply_later;
+            }
+        
+            async function applyLater() {
+                const jobId = document.querySelector('.job-item-selected').dataset.jobId;
+                const response = await fetch(`/apply_later/${jobId}`, {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    var jobCard = document.querySelector(`.job-item[data-job-id="${jobId}"]`);
+                    jobCard.classList.add('job-item-apply-later');
+                    alert('Job marked as Apply Later');
+                } else {
+                    alert('Failed to mark job as Apply Later');
+                }
+            }
+        </script>
     </body>
-    
 </html>

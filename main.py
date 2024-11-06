@@ -63,6 +63,7 @@ def transform(soup):
             'job_url': job_url,
             'job_description': job_description,
             'applied': 0,
+            'apply_later': 0,
             'hidden': 0,
             'interview': 0,
             'rejected': 0

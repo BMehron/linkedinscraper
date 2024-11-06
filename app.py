@@ -103,7 +103,7 @@ def mark_interview(job_id):
     print("Interview clicked!")
     conn = sqlite3.connect(config["db_path"])
     cursor = conn.cursor()
-    query = "UPDATE jobs SET interview = 1 WHERE id = ?"
+    query = "UPDATE jobs SET interview = 1, applied = 1 WHERE id = ?"
     print(f'Executing query: {query} with job_id: {job_id}')
     cursor.execute(query, (job_id,))
     conn.commit()
@@ -115,12 +115,46 @@ def mark_rejected(job_id):
     print("Rejected clicked!")
     conn = sqlite3.connect(config["db_path"])
     cursor = conn.cursor()
-    query = "UPDATE jobs SET rejected = 1 WHERE id = ?"
+    query = "UPDATE jobs SET rejected = 1, interview = 0, applied = 1 WHERE id = ?"
     print(f'Executing query: {query} with job_id: {job_id}')
     cursor.execute(query, (job_id,))
     conn.commit()
     conn.close()
     return jsonify({"success": "Job marked as rejected"}), 200
+
+@app.route('/apply_later/<int:job_id>', methods=['POST'])
+def apply_later(job_id):
+    conn = sqlite3.connect(config["db_path"])
+    cursor = conn.cursor()
+    cursor.execute("UPDATE jobs SET apply_later = 1 WHERE id = ?", (job_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+
+@app.route('/progress_statistics')
+def progress_statistics():
+    conn = sqlite3.connect(config["db_path"])
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM jobs WHERE applied = 1")
+    total_applications = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM jobs WHERE rejected = 1")
+    total_rejections = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM jobs WHERE interview = 1")
+    total_interviews = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM jobs WHERE hidden = 1")
+    total_hidden = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM jobs WHERE apply_later = 1")
+    total_apply_later = cursor.fetchone()[0]
+    conn.close()
+    return jsonify({
+        "total_applications": total_applications,
+        "total_rejections": total_rejections,
+        "total_interviews": total_interviews,
+        "total_hidden": total_hidden,
+        "total_apply_later": total_apply_later
+    })
+
 
 @app.route('/get_cover_letter/<int:job_id>')
 def get_cover_letter(job_id):
